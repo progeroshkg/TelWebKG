@@ -1,118 +1,99 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { Component } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { initializeApp } from 'firebase/app';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import Login from './android/Screens/Login/Login';
+import Register from './android/Screens/Register/Register';
+import Home from './android/Screens/Home/Home';
+import Settings from './android/Screens/Settings/Settings';
+import NotFound from './android/Screens/404/404';
+import Profile from './android/Screens/Profile/Profile';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+// Импортируем конфигурацию Firebase
+import { firebaseConfig } from './Config/Farebase';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+// Инициализируем Firebase
+initializeApp(firebaseConfig);
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+// Создаем стек навигации
+const Stack = createStackNavigator();
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+interface AppState {
+  userLoggedIn: boolean;
+  isLoading: boolean;
+}
+
+export default class App extends Component<{}, AppState> {
+  constructor(props: {}) {
+    super(props);
+    this.state = {
+      userLoggedIn: false,
+      isLoading: true,
+    };
+  }
+
+  componentDidMount() {
+    // Проверяем состояние аутентификации пользователя
+    this.checkAuthState();
+  }
+
+  async checkAuthState() {
+    const auth = getAuth();
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Если пользователь аутентифицирован
+        this.setState({ userLoggedIn: true, isLoading: false });
+        // Сохраняем состояние аутентификации в AsyncStorage
+        await AsyncStorage.setItem('userLoggedIn', 'true');
+      } else {
+        // Если пользователь не аутентифицирован
+        this.setState({ userLoggedIn: false, isLoading: false });
+        // Сохраняем состояние аутентификации в AsyncStorage
+        await AsyncStorage.setItem('userLoggedIn', 'false');
+      }
+    });
+  }
+
+  render() {
+    const { userLoggedIn, isLoading } = this.state;
+
+    if (isLoading) {
+      // Показываем загрузочный экран, пока приложение проверяет статус аутентификации пользователя
+      return <LoadingScreen />;
+    }
+
+    return (
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName={userLoggedIn ? 'Home' : 'Login'}>
+          <Stack.Screen name="Login" component={Login} />
+          <Stack.Screen name="Register" component={Register} />
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="Settings" component={Settings} />
+          <Stack.Screen name="Profile" component={Profile} />
+          <Stack.Screen name="NotFound" component={NotFound} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    );
+  }
+}
+
+// Загрузочный экран
+const LoadingScreen = () => {
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#0088cc" />
     </View>
   );
-}
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+};
 
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
 });
-
-export default App;
